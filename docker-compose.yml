@@ -1,0 +1,92 @@
+version: '3.6'
+services:
+    phpfpm:
+        build:
+            context: ./infrastructure/docker
+            dockerfile: Dockerfile
+        restart: always
+        volumes:
+            - ./infrastructure/config/php-wordpress.ini:/usr/local/etc/php/conf.d/php-wordpress.ini:ro
+            - ./infrastructure/docker/phpfpm-entrypoint.sh:/phpfpm-entrypoint.sh:ro
+            - phpfpm:/var/www/html:cached
+            - ./wp-content/:/var/www/html/wp-content:cached
+            - ./wp-config.php:/var/www/html/wp-config.php
+            - ./infrastructure/config/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
+        links:
+            - mysql
+        env_file:
+            - ./.env
+        container_name: ${APP_NAME}_phpfpm
+        depends_on:
+            - mysql
+        entrypoint:
+            - /phpfpm-entrypoint.sh
+
+    nginx:
+        image: nginx:alpine
+        restart: always
+        links:
+            - phpfpm
+        ports:
+            - "80:80"
+            - "443:443"
+        volumes:
+            - ./infrastructure/certs:/etc/certs
+            - ./infrastructure/nginx/:/etc/nginx/templates/
+            - ./data/nginx-logs:/var/log/nginx
+            - phpfpm:/var/www/html:rw,cached
+            - ./wp-content/:/var/www/html/wp-content:cached
+            - ./wp-config.php:/var/www/html/wp-config.php
+        container_name: ${APP_NAME}_nginx
+        environment:
+            - "NGINX_ENVSUBST_TEMPLATE_SUFFIX=.conf"
+            - "DOMAIN=${DOMAIN_CURRENT_SITE}"
+        depends_on:
+            - phpfpm
+
+    mysql:
+        image: mysql:latest
+        restart: always
+        env_file:
+            - ./.env
+        volumes:
+            - mysql:/var/lib/mysql:cached
+            - ./data/sql:/storage/dumps
+        container_name: ${APP_NAME}_mysql
+        ports:
+            - "33061:3306"
+
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        
+        volumes:
+            - ./infrastructure/config/phpmyadmin.ini:/usr/local/etc/php/conf.d/phpmyadmin.ini:ro
+        environment:
+            PMA_HOST: "${MYSQL_DB_HOST}"
+            PMA_PORT: 3306
+            MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+        container_name: ${APP_NAME}_phpmyadmin
+        ports:
+            - '8082:80'
+        links:
+            - mysql
+        depends_on:
+            - mysql
+
+    cli:
+        image: wordpress:cli-php8.0
+        env_file:
+            - ./.env
+        volumes:
+            - phpfpm:/var/www/html:rw
+            - ./wp-config.php:/var/www/html/wp-config.php
+        container_name: ${APP_NAME}_wpcli
+        working_dir: /var/www/html
+        links:
+            - mysql
+        depends_on:
+            - mysql
+
+volumes:
+    phpfpm:
+    mysql:

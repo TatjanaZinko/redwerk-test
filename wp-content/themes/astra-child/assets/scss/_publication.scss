@@ -1,0 +1,33 @@
+.publication-list {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+}
+.publication-list-item {
+    width: 25%;
+    padding: 1rem;
+    .publication-img img {        
+        aspect-ratio: 16/9;
+    }
+}
+.publication-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+    max-height: 3rem;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+@media (max-width: 1024px) {
+    .publication-list-item {
+        width: 50%;
+        padding: 1rem;        
+    }
+}
+
+@media (max-width: 768px) {
+    .publication-list-item {
+        width: 100%;
+        padding: 1rem;        
+    }
+}
